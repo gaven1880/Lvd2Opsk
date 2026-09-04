@@ -3,9 +3,15 @@
 # Next SEKAI LevelData => Open Sekai Score JSON
 
 This converter does not support:
-- Long notes
+- Long notes with flick heads
+- Long notes with hidden heads
 - Guide notes
-- Dynamic stages
+- Ease In-Out
+- Ease Out-In
+- Dynamic Stages
+- Layers
+- Timescale skips
+- Timescale eases
 - Fake notes
 - Damage notes
 - Custom SFX
@@ -41,10 +47,11 @@ else
 }
 
 List<Note> noteList = new List<Note>();
+List<Note> longList = new List<Note>();
 List<MusicScoreEventData> eventDataList = new List<MusicScoreEventData>();
 
 // SE Volume
-eventDataList.Add(new(
+eventDataList.Add(new MusicScoreEventData(
   eventDataList.ToArray().Length + 1,
   MusicScoreEventType.SeVolume,
   0L,
@@ -52,38 +59,71 @@ eventDataList.Add(new(
 ));
 
 // Time Signature
-eventDataList.Add(new(
+eventDataList.Add(new MusicScoreEventData(
   eventDataList.ToArray().Length + 1,
   MusicScoreEventType.TimeSignature,
   0L,
   "4/4"
 ));
 
+(Entity[], Entity[], Entity[]) filteredEntities = ConvUtil.FilterEntities(levelData.entities);
+Entity[] eventDataEntities = filteredEntities.Item1;
+Entity[] noteEntities = filteredEntities.Item2;
+Entity[] longEntities = filteredEntities.Item3;
+
 int id = eventDataList.ToArray().Length + 1;
 
-foreach (Entity entity in levelData.entities)
+// event data
+foreach (Entity entity in eventDataEntities)
 {
-  if (ConvUtil.EventDataArchetypes.Contains(entity.archetype))
+  eventDataList.Add(ConvUtil.ProcessEventData(entity, id));
+  id++;
+}
+
+// notes
+foreach (Entity entity in noteEntities)
+{
+  noteList.Add(ConvUtil.ProcessNote(entity, id));
+  id++;
+}
+
+// long notes
+foreach (Entity entity in longEntities)
+{
+  Note note = ConvUtil.ProcessNote(entity, id);
+  note.NSName = entity.name;
+  longList.Add(note);
+  id++;
+}
+
+foreach (Note note in longList)
+{
+  Entity entity = longEntities.FirstOrDefault(e => e.name == note.NSName);
+  
+  Data nextData = entity.data.FirstOrDefault(d => d.name == "next");
+  if (nextData != null)
   {
-    eventDataList.Add(ConvUtil.ProcessEventData(entity, id));
-    id++;
-  }
-  else if (ConvUtil.NoteArchetypes.Contains(entity.archetype))
-  {
-    noteList.Add(ConvUtil.ProcessNote(entity, id));
-    id++;
+    Note nextNote = longList.FirstOrDefault(n => n.NSName == nextData._ref);
+
+    note.nextConnectionId = nextNote.id;
+    nextNote.previousConnectionId = note.id;
   }
 }
 
-MusicScoreEventData[] eventDataArray = [.. eventDataList];
-Note[] noteArray = [.. noteList];
+foreach (Note note in longList)
+{
+  note.noteBaseType = ConvUtil.GetNoteBaseType(note.category, note.IsConnectedFirst, note.IsConnectedLast, note.IsSingle);
+}
 
-MusicScoreMakerData score = new(
+MusicScoreEventData[] eventDataArray = eventDataList.ToArray();
+Note[] noteArray = noteList.Concat(longList).ToArray();
+
+MusicScoreMakerData score = new MusicScoreMakerData(
   1,
   eventDataArray,
-  [],
+  Array.Empty<object>(),
   noteArray,
-  noteArray[^1].ticks,
+  noteArray.OrderBy(note => note.ticks).ToArray()[^1].ticks,
   -6767,
   null
 );

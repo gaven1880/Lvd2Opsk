@@ -1,9 +1,15 @@
 ## Next SEKAI LevelData => [Open Sekai](https://github.com/gaven1880/OpenSekai) Score JSON
 
 This converter does not support:
-- Long notes
+- Long notes with flick heads
+- Long notes with hidden heads
 - Guide notes
-- Dynamic stages
+- Ease In-Out
+- Ease Out-In
+- Dynamic Stages
+- Layers
+- Timescale skips
+- Timescale eases
 - Fake notes
 - Damage notes
 - Custom SFX

@@ -78,6 +78,9 @@ namespace Sekai
 
   public class Note
   {
+    [JsonIgnore]
+    public string NSName;
+
     [JsonPropertyName("$id")]
     public string _id;
  
