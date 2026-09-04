@@ -184,7 +184,7 @@ public class ConvUtil
       long ticks = Beat2Ticks(entity.data.FirstOrDefault(data => data.name == "#BEAT").value);
       (int, int) lanes = UnconvertLane(entity.data.FirstOrDefault(data => data.name == "lane").value,
         entity.data.FirstOrDefault(data => data.name == "size").value);
-      NoteCategory category = GetNoteCategory(entity.archetype);
+      NoteCategory category = GetNoteCategory(entity);
       NoteType type = entity.archetype.Contains("Critical") ? NoteType.Critical : NoteType.Default;
       NoteLineType noteLineType = GetNoteLineType((int)entity.data.FirstOrDefault(data => data.name == "connectorEase").value);
       NoteBaseType noteBaseType = GetNoteBaseType(category, false, false, true);
@@ -210,8 +210,10 @@ public class ConvUtil
     throw new InvalidOperationException($"Attempted to run ProcessNote on a non-note entity. Archetype: {entity.archetype}.");
   }
 
-  public static NoteCategory GetNoteCategory(string archetype)
+  public static NoteCategory GetNoteCategory(Entity entity)
   {
+    string archetype = entity.archetype;
+
     if (archetype.EndsWith("alTapNote"))
     {
       return NoteCategory.Normal;
@@ -248,7 +250,7 @@ public class ConvUtil
     }
     else if (archetype == "AnchorNote")
     {
-      return NoteCategory.FrictionHideLong;
+      return entity.data.FirstOrDefault(d => d.name == "next") != null ? NoteCategory.Hidden : NoteCategory.FrictionHideLong;
     }
 
     throw new ArgumentException($"Unable to process archetype {archetype} to NoteCategory.");
