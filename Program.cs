@@ -72,6 +72,15 @@ string primaryTimescaleGroup = levelData.entities
   .Select(g => g.Key)
   .FirstOrDefault();
 
+string primaryStage = levelData.entities
+  .Where(e => ConvUtil.NoteArchetypes.Contains(e.archetype) || ConvUtil.IsHoldArchetype(e.archetype))
+  .Select(e => e.TryGetRef("stage", out string stage) ? stage : null)
+  .Where(s => s != null)
+  .GroupBy(s => s)
+  .OrderByDescending(g => g.Count())
+  .Select(g => g.Key)
+  .FirstOrDefault();
+
 bool IsRelevantEventData(Entity entity)
 {
   if (!ConvUtil.EventDataArchetypes.Contains(entity.archetype)) return false;
@@ -79,14 +88,16 @@ bool IsRelevantEventData(Entity entity)
   return !entity.TryGetRef("#TIMESCALE_GROUP", out string group) || group == primaryTimescaleGroup;
 }
 
+bool IsOnPrimaryStage(Entity entity) =>
+  !entity.TryGetRef("stage", out string stage) || stage == primaryStage;
+
 Dictionary<Entity, int> idByEntity = new Dictionary<Entity, int>();
 int idCursor = id;
 foreach (Entity entity in levelData.entities)
 {
-  bool isHold = ConvUtil.IsHoldArchetype(entity.archetype) && holdChainMap.ContainsKey(entity);
-  if (!IsRelevantEventData(entity) &&
-      !ConvUtil.NoteArchetypes.Contains(entity.archetype) &&
-      !isHold)
+  bool isHold = ConvUtil.IsHoldArchetype(entity.archetype) && holdChainMap.ContainsKey(entity) && IsOnPrimaryStage(entity);
+  bool isNote = ConvUtil.NoteArchetypes.Contains(entity.archetype) && IsOnPrimaryStage(entity);
+  if (!IsRelevantEventData(entity) && !isNote && !isHold)
   {
     continue;
   }
@@ -102,12 +113,13 @@ foreach (Entity entity in levelData.entities)
     eventDataList.Add(ConvUtil.ProcessEventData(entity, id));
     id++;
   }
-  else if (ConvUtil.NoteArchetypes.Contains(entity.archetype))
+  else if (ConvUtil.NoteArchetypes.Contains(entity.archetype) && IsOnPrimaryStage(entity))
   {
     noteList.Add(ConvUtil.ProcessNote(entity, id));
     id++;
   }
-  else if (ConvUtil.IsHoldArchetype(entity.archetype) && holdChainMap.TryGetValue(entity, out ConvUtil.HoldChainMember member))
+  else if (ConvUtil.IsHoldArchetype(entity.archetype) && IsOnPrimaryStage(entity) &&
+    holdChainMap.TryGetValue(entity, out ConvUtil.HoldChainMember member))
   {
     int previousConnectionId = member.Previous != null && idByEntity.TryGetValue(member.Previous, out int prevId) ? prevId : -1;
     int nextConnectionId = member.Next != null && idByEntity.TryGetValue(member.Next, out int nextId) ? nextId : -1;
